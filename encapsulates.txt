@@ -1,0 +1,62 @@
+//
+//  encapsulates.swift
+//  EmergencyFocus
+//
+//  Created by Prince Ezra on 2025/06/02.
+//
+
+
+This commit introduces the complete "Trust Partners" feature, enabling users to designate trusted individuals for emergency notifications. It encompasses UI, data management, system service integration, and UX enhancements.
+
+**Core Functionality:**
+
+*   **Multi-Partner Management:**
+    *   Allows users to add multiple Trust Partners from device contacts.
+    *   Stores partner name and phone number persistently (UserDefaults via JSON).
+    *   Users can select one partner as "Active" for emergency actions.
+    *   Provides UI to add, list, and set active partners.
+    *   Supports swipe-to-delete for individual partners (with confirmation).
+    *   Supports removing all partners (with confirmation).
+*   **"Get Help" Action:**
+    *   Prominent "Get Help" button triggers an SMS to the active Trust Partner.
+    *   Button state (enabled/disabled, color) reflects active partner status and message preparation state.
+*   **Emergency Message System:**
+    *   Integrates with `MFMessageComposeViewController` for user-initiated SMS.
+    *   Message content includes either a default template or a user-customized message.
+    *   Placeholders (e.g., `{NAME}`) are replaced with active partner's details.
+*   **Location Integration:**
+    *   Optionally appends user's current location to the emergency SMS.
+    *   Uses `CoreLocation` for fetching location with `async/await`.
+    *   Includes a timeout for location requests.
+    *   Handles location permission states gracefully.
+
+**User Experience & UI Enhancements:**
+
+*   **Dedicated Settings Screen (`MessageSettingsView`):**
+    *   Users can toggle between default and custom emergency messages.
+    *   Provides a `TextEditor` for custom message input.
+    *   Users can toggle on/off the inclusion of location data in messages (defaults to on).
+    *   Settings UI adapts based on app-level location permission status.
+*   **Location Permission Handling:**
+    *   `LocationPermissionNoticeView` informs users if location access is denied or restricted and provides a shortcut to app settings.
+    *   Initial permission request handled in `onAppear` if status is not determined.
+*   **Animations & Feedback:**
+    *   "Get Help" button jiggles periodically when disabled due to no active partner.
+    *   "Get Help" button has a pulsating glow effect when enabled and active.
+    *   `ProgressView` indicates when the message and location are being prepared.
+*   **Onboarding:**
+    *   A one-time welcome alert explains the Trust Partners screen on first use.
+*   **Modular Design:**
+    *   `TrustPartnerViewModel` manages data and business logic.
+    *   Reusable SwiftUI components created: `PartnerRow`, `LocationPermissionNoticeView`.
+    *   Reusable `ViewModifier`s created: `JiggleEffect`, `PulsatingGlowEffect`.
+    *   `UIViewControllerRepresentable` wrappers for `CNContactPickerViewController` (`NewContactPickerView`) and `MFMessageComposeViewController` (`MessageComposeView`).
+
+**Technical Details:**
+
+*   Built with SwiftUI, targeting iOS 15.6+ (with considerations for API compatibility).
+*   Uses `@AppStorage` for simple preferences and `UserDefaults` with `JSONEncoder`/`Decoder` for storing the `TrustPartner` array.
+*   Employs `async/await` for modern concurrency in location fetching and message preparation.
+*   `LocationManager` class encapsulates `CoreLocation` interactions.
+
+This feature provides a robust and user-friendly way for individuals to quickly reach out to their support network in times of need.
