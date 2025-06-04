@@ -1,80 +1,87 @@
 //
-//  PartnerRow.swift
-//  EmergencyFocus
+// PartnerRow.swift
+// EmergencyFocus
 //
-//  Created by Prince Ezra on 2025/05/19.
+// Created by Prince Ezra on 2025/05/19.
 //
 
 import SwiftUI
 
 struct PartnerRow: View {
-	// Input properties for the row
-	let partner: TrustPartner // Assumes TrustPartner.swift exists and is in your target
+	let partner: TrustPartner
 	let isPrimary: Bool
-	let onSelectAsPrimary: () -> Void // Callback when "Set Active" is tapped
+	let onSelectAsPrimary: () -> Void
 	
 	var body: some View {
-		HStack {
-			VStack(alignment: .leading, spacing: 4) {
-				Text(partner.name)
-					.font(.headline)
-				Text(partner.phoneNumber)
-					.font(.subheadline)
-					.foregroundColor(.gray)
-			}
-			
-			Spacer() // Pushes the checkmark or button to the right
-			
-			if isPrimary {
-				Image(systemName: "checkmark.circle.fill")
-					.foregroundColor(.green)
-					.font(.title2) // Make checkmark a bit bigger
-			} else {
-				// Button to make this partner the active primary one
-				Button {
-					onSelectAsPrimary()
-				} label: {
-					Text("Set Active")
-						.font(.caption) // Smaller font for this button
-						.padding(.horizontal, 8)
-						.padding(.vertical, 4)
-						.background(Color.blue.opacity(0.1)) // Subtle background
-						.foregroundColor(.blue)
-						.cornerRadius(8)
+		// VStack to act as the card container
+		VStack(alignment: .leading, spacing: 0) { // Use spacing 0 if padding handles inner spacing
+			HStack {
+				VStack(alignment: .leading, spacing: 4) {
+					Text(partner.name)
+						.font(.headline)
+						.foregroundColor(Color(.label)) // Ensure good contrast on card background
+					Text(partner.phoneNumber)
+						.font(.subheadline)
+						.foregroundColor(Color(.secondaryLabel))
 				}
-				.buttonStyle(PlainButtonStyle()) // Important for tappable buttons in List rows
+				Spacer() // Pushes the checkmark or button to the right
+				
+				if isPrimary {
+					Image(systemName: "checkmark.circle.fill")
+						.foregroundColor(.green)
+						.font(.title2)
+						.transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .center)))
+				} else {
+					Button {
+						onSelectAsPrimary()
+					} label: {
+						Text("Set Active")
+							.font(.caption)
+							.padding(.horizontal, 8)
+							.padding(.vertical, 4)
+							.background(Color.blue.opacity(0.1))
+							.foregroundColor(.blue)
+							.cornerRadius(8)
+					}
+					.buttonStyle(PlainButtonStyle())
+					.transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .center)))
+				}
 			}
+			.padding() // Internal padding for the card content
 		}
-		.padding(.vertical, 8) // Add some vertical padding to each row for better spacing
+		.background(Color(.secondarySystemGroupedBackground)) // Card background color
+		.cornerRadius(10) // Rounded corners for the card
+								// Optional: Add a subtle shadow to lift the card
+								// .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+								// Note: .padding(.vertical, 8) from the old row style is removed here,
+								// as spacing will be handled between cards in the List.
 	}
 }
 
-// Preview for PartnerRow
+// Preview for PartnerRow (updated to reflect card style)
 #Preview {
-	// Create some mock data for the preview
+	@State var primaryPartnerId: UUID? = TrustPartner(name: "Jane Doe", phoneNumber: "555-1234", isPrimary: true).id
 	let mockPartner1 = TrustPartner(name: "Jane Doe", phoneNumber: "555-1234", isPrimary: true)
 	let mockPartner2 = TrustPartner(name: "John Smith", phoneNumber: "555-5678", isPrimary: false)
 	
-	return Group {
-		PartnerRow(partner: mockPartner1, isPrimary: true, onSelectAsPrimary: {
-			print("Set \(mockPartner1.name) as primary (Preview)")
-		})
-		.padding()
-		.previewLayout(.sizeThatFits)
-		.previewDisplayName("Primary Partner")
-		
-		PartnerRow(partner: mockPartner2, isPrimary: false, onSelectAsPrimary: {
-			print("Set \(mockPartner2.name) as primary (Preview)")
-		})
-		.padding()
-		.previewLayout(.sizeThatFits)
-		.previewDisplayName("Non-Primary Partner")
-		
-		// Example of how it might look in a List
-		List {
-			PartnerRow(partner: mockPartner1, isPrimary: true, onSelectAsPrimary: {})
-			PartnerRow(partner: mockPartner2, isPrimary: false, onSelectAsPrimary: {})
+	return ScrollView { // Use ScrollView for previewing cards with spacing
+		VStack(spacing: 12) { // Spacing between cards
+			Text("Card Style Preview:")
+				.font(.title)
+				.padding(.bottom)
+			
+			PartnerRow(partner: mockPartner1, isPrimary: primaryPartnerId == mockPartner1.id, onSelectAsPrimary: {
+				withAnimation(.spring()) { primaryPartnerId = mockPartner1.id }
+			})
+			
+			PartnerRow(partner: mockPartner2, isPrimary: primaryPartnerId == mockPartner2.id, onSelectAsPrimary: {
+				withAnimation(.spring()) { primaryPartnerId = mockPartner2.id }
+			})
+			
+			// Example of a card with a shadow (uncomment shadow in PartnerRow to see)
+			// PartnerRow(partner: TrustPartner(name: "Shadow Card", phoneNumber: "555-0000"), isPrimary: false, onSelectAsPrimary: {})
 		}
-		.previewDisplayName("In a List")
+		.padding()
 	}
+	.background(Color(.systemGroupedBackground)) // Simulate list background
 }

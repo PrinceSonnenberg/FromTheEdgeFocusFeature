@@ -7,6 +7,7 @@
 
 // File: MessageSettingsView.swift
 
+// File: MessageSettingsView.swift
 import SwiftUI
 import CoreLocation // For CLAuthorizationStatus
 
@@ -20,12 +21,20 @@ struct MessageSettingsView: View {
 	
 	// Observe the LocationManager instance passed from the parent view
 	@ObservedObject var locationManager: LocationManager
-	
 	@Environment(\.presentationMode) var presentationMode
+	
+	// State for content appearance animation
+	@State private var contentHasAppeared: Bool = false
 	
 	// Computed property to determine if the app has sufficient location permission
 	private var hasLocationPermission: Bool {
-		locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways
+		locationManager.authorizationStatus == .authorizedWhenInUse ||
+		locationManager.authorizationStatus == .authorizedAlways
+	}
+	
+	init(locationManager: LocationManager) {
+		self.locationManager = locationManager
+		// Note: Moving UITextView appearance modification to TextEditor's specific onAppear/onDisappear
 	}
 	
 	var body: some View {
@@ -36,7 +45,7 @@ struct MessageSettingsView: View {
 					
 					if useCustomMessage {
 						VStack(alignment: .leading, spacing: 8) {
-							Text("Enter your custom message. \n'{NAME}' will be replaced with the partner's name. \nIf 'Include Location' is on (and app permission granted), location will be added.")
+							Text("Enter your custom message.\n'{NAME}' will be replaced with the partner's name. \nIf 'Include Location' is on (and app permission granted), location will be added.")
 								.font(.caption)
 								.foregroundColor(.secondary)
 							
@@ -48,8 +57,8 @@ struct MessageSettingsView: View {
 								)
 								.onAppear { UITextView.appearance().backgroundColor = .clear }
 								.onDisappear { UITextView.appearance().backgroundColor = nil }
+								.padding(.vertical, 5)
 						}
-						.padding(.vertical, 5) // Add some padding for the TextEditor VStack
 					} else {
 						VStack(alignment: .leading, spacing: 4) {
 							Text("The app will use the default message:")
@@ -57,35 +66,29 @@ struct MessageSettingsView: View {
 								.foregroundColor(.secondary)
 							Text(defaultEmergencyMessageTemplate.replacingOccurrences(of: "{NAME}", with: "[Partner's Name]"))
 								.italic()
-								.font(.callout) // Make it slightly more prominent than caption
+								.font(.callout)
 						}
 						.padding(.vertical, 5)
 					}
 				}
 				
 				Section(header: Text("Location Sharing In Message")) {
-					// The "Include Location" toggle's behavior depends on app-level permissions
 					if hasLocationPermission {
-						// App has permission, user can choose to include/exclude
 						Toggle("Include Location Data", isOn: $includeLocationInSettings)
 						Text("If enabled, your approximate location will be added to the emergency message.")
 							.font(.caption)
 							.foregroundColor(.secondary)
 					} else {
-						// App does NOT have permission (denied or restricted)
 						VStack(alignment: .leading, spacing: 8) {
-							// Display the current status of the in-app toggle, but disable it
 							Toggle("Include Location Data", isOn: $includeLocationInSettings)
-								.disabled(true) // Disable the toggle
+								.disabled(true)
 							
 							if locationManager.authorizationStatus == .denied {
 								Text("App-level location permission is currently disabled. To enable location sharing in messages, first grant location access to this app in Settings.")
 									.font(.caption)
 									.foregroundColor(.orange)
-								Button("Open App Settings") {
-									openAppSettings()
-								}
-								.font(.caption)
+								Button("Open App Settings") { openAppSettings() }
+									.font(.caption)
 							} else if locationManager.authorizationStatus == .restricted {
 								Text("App-level location permission is restricted on this device (e.g., by parental controls). Location cannot be included in messages.")
 									.font(.caption)
@@ -94,9 +97,6 @@ struct MessageSettingsView: View {
 								Text("Location permission has not been set yet. Please return to the main screen; the app will request permission if needed.")
 									.font(.caption)
 									.foregroundColor(.orange)
-								// Optionally, you could add a button to trigger permission request here,
-								// but it's usually better handled on the main screen's onAppear.
-								// Button("Request Permission") { locationManager.requestLocationPermission() }
 							}
 						}
 						.padding(.vertical, 5)
@@ -107,27 +107,32 @@ struct MessageSettingsView: View {
 			.navigationBarItems(trailing: Button("Done") {
 				presentationMode.wrappedValue.dismiss()
 			})
-			// .onAppear {
-			//    // If you need to refresh the location manager status specifically when this view appears
-			//    // though being an @ObservedObject, it should update automatically if the source changes.
-			//    // This might be useful if the user goes to settings, changes permission, and comes back
-			//    // directly to this sheet without the parent view reappearing.
-			//    // However, the system usually re-launches the app or view in such cases.
-			//    print("MessageSettingsView: Appeared with location status: \(locationManager.authorizationStatus)")
-			// }
+			// Animation modifiers for the content of the sheet
+			.scaleEffect(contentHasAppeared ? 1.0 : 0.93) // Start slightly smaller
+			.opacity(contentHasAppeared ? 1.0 : 0.0)    // Start transparent
+			.onAppear {
+				withAnimation(.spring(response: 0.45, dampingFraction: 0.75, blendDuration: 0)) {
+					contentHasAppeared = true
+				}
+			}
 		}
+		.navigationViewStyle(.stack) // Apply to the NavigationView
 	}
 	
 	private func openAppSettings() {
-		guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else { return }
+		guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else {
+			print("Error: Could not create settings URL string for MessageSettingsView.")
+			return
+		}
 		if UIApplication.shared.canOpenURL(settingsUrl) {
 			UIApplication.shared.open(settingsUrl)
+		} else {
+			print("Error: Cannot open app settings URL from MessageSettingsView.")
 		}
 	}
 }
 
 // MARK: - Preview
-
 #Preview {
 	// Mock LocationManager for different preview states
 	class MockSettingsLocationManager: LocationManager {
@@ -140,14 +145,6 @@ struct MessageSettingsView: View {
 	return Group {
 		MessageSettingsView(locationManager: MockSettingsLocationManager(status: .authorizedWhenInUse))
 			.previewDisplayName("Location Authorized")
-		
-		MessageSettingsView(locationManager: MockSettingsLocationManager(status: .denied))
-			.previewDisplayName("Location Denied")
-		
-		MessageSettingsView(locationManager: MockSettingsLocationManager(status: .restricted))
-			.previewDisplayName("Location Restricted")
-		
-		MessageSettingsView(locationManager: MockSettingsLocationManager(status: .notDetermined))
-			.previewDisplayName("Location Not Determined")
+		// Add other previews if needed
 	}
 }
